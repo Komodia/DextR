@@ -1,0 +1,231 @@
+// Headers
+//
+#include <Servo.h>
+#include <SPI.h>
+#include "Arduino.h"
+#include <SoftwareSerial.h>
+#include <XBee.h>
+#include <stdlib.h>
+//
+// Definitions and Objects
+//
+#define board_ID 1
+Servo servo1;
+Servo servo2;
+//XBee xbee = XBee();
+//xbee.setSerial(Serial)
+//SoftwareSerial Zigbee(11,12)
+//
+// Pins
+//
+const int Servo1Pin = 12;
+const int Servo2Pin = 8;
+const int ServoZero = 90;
+const int Joystick1Pin = A5;
+const int Joystick2Pin = A4;
+const int powerPin = 10;
+const int ledPin = 13; // The pin that the board LED is attached to
+const int modePin = A3;
+const int Grip1Pin = 7;
+const int Grip2Pin = 4;
+//
+// Constants
+//
+int incomingByte;      // a variable to read incoming serial data int
+char right_buffer[3];
+char left_buffer[3];
+char grip_buffer[1];
+char mode_buffer[1];
+int received;
+char Byte;
+int i=0;
+int right_val=0;
+int left_val=0;
+int gripper_val=0;
+int mode_val=0;
+// 
+// State Checks
+boolean controlBoard = true; //True for the controller board, false for the recieve board
+boolean carMode = true; // True for car mode, false for arm mode
+boolean grip_open = false; //False is don't move, true is open
+boolean grip_close = false; //True is close
+
+//
+void setup() 
+{
+//
+// Set up serial communication
+//
+  Serial.begin(9600);
+  pinMode(ledPin, OUTPUT);
+  received = 0;
+  right_buffer[received] = '\0';
+  left_buffer[received] = '\0';
+  grip_buffer[received] = '\0';
+  mode_buffer[recieved] = ' 0';
+//
+// Servo attached to Arduino digital pin 12 and 8
+//
+  servo1.attach(Servo1Pin);
+  servo2.attach(Servo2Pin);
+  servo1.write(ServoZero); //Make sure servo is stopped
+  servo2.write(ServoZero);
+//
+// Pin modes
+//
+  pinMode(powerPin, OUTPUT);
+  digitalWrite(powerPin, HIGH);
+  pinMode(Grip1Pin, INPUT);
+  pinMode(Grip2Pin, INPUT);
+//
+}
+
+void loop() {
+//
+// Definitions
+word Joystick1In;
+double control1;
+word Joystick2In;
+double control2;
+word Grip1In;
+word Grip2In;
+double controlG;
+word ModeIn;
+//
+// Start by determining if send or recieve board. This is hard coded above.
+//
+  switch (controlBoard){
+    case true: //This means it is the board on the controller
+    //do control board stuff
+    checkMode();
+    JoyRead();
+    GripRead();
+    controlCalc();
+    controlSend();
+    break;
+    case false: //This means it is the board on the bot
+    controlRevceive();
+    Action();
+    break;
+  }
+
+}
+
+// ***Functions*** //
+
+// Check if car or arm mode
+void checkMode(){
+  ModeIn = analogRead(modePin); // Read from mode pin
+  if (ModeIn > 600){
+    carMode = true; // This is car mode
+  }
+  if (ModeIn < 600){
+    carMode = false; // This corresponds to arm mode
+  }
+}
+
+// Read the values from the joysticks
+void JoyRead(){
+  Joystick1In = analogRead(Joystick1Pin); // Read from Joystick
+  Joystick2In = analogRead(Joystick2Pin); 
+}
+
+// Read values for the Gripper
+void GripRead(){
+  Grip1In = digitalRead(Grip1Pin);
+  Grip2In = digitalRead(Grip2Pin);
+  
+  if (Grip1In > Grip2In){
+    grip_close = true;
+    grip_open = false;
+  }
+  else if (Grip1In < Grip2In){
+    grip_close = false;
+    grip_open = true;
+  }
+  else {
+    grip_close = false;
+    grip_open = false;
+  }
+
+// Calculate the control for each mode
+void controlCalc(){
+  if (carMode = true) {
+    control1 = //Whatever it equals
+    control2 = // These are for controlling motors
+  }
+  if (carMode = false) {
+    control1 = (Joystick1In/260)*90; // These values control the servos
+    control2 = (Joystick2In/260)*90;
+    //Also put however the gripper works here
+  }
+  if (grip_open = true) {
+    controlG = //open control
+  }
+  else if (grip_close = true) {
+    controlG = //close control
+  }
+  else {
+    controlG = //Don't move control
+  }
+  
+}
+
+// Send the result to the other Arduino
+void controlSend(){
+}
+
+// Recieve the result and break apart
+void controlReceive(){ //This still needs some work
+  if (Serial.available())
+     {
+       // Get right value
+         for(i=0; i<3; i++)
+           {
+           right_buffer[i] = Serial.read();
+           }
+         // Get left value
+         for(i=0; i<3; i++)
+           {
+           left_buffer[i] = Serial.read();
+           }
+         // Get gripper value
+         for(i=0; i<1; i++)
+           {
+           grip_buffer[i] = Serial.read();
+           }
+         // Get mode value
+         for(i=0; i<1; i++)
+           {
+           mode_buffer[i] = Serial.read();
+           }
+       control1 = atoi(right_buffer);
+       control2 = atoi(left_buffer);
+       controlG = atoi(grip_buffer);
+       mode_val = atoi(mode_buffer);
+       
+       switch (mode_val){
+         case 1: 
+         carMode = true;
+         break;
+         case 2:
+         carMode = false;
+         break;
+       }
+       
+       //Serial.print(right_val); // Should this be an interrupt to change the value of the servo/motor control?
+     }
+}
+
+// Actually move servos, motors, and gripper
+void Action(){
+  if (carMode = true){
+    //do car control
+  }
+  else if (carMode = false){
+    servo1.write(control1);
+    servo2.write(control2);
+  }
+  // Do Gripper control
+}
+
